@@ -555,11 +555,17 @@ jobs:
           fi
 
       - name: 初始化并同步内核源码
-        working-directory: ${{ env.KERNEL_ROOT }}
         run: |
           mkdir -p ${{ env.KERNEL_ROOT }}
-          git clone https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-gnu-6.4.1.git gcc
-          git clone --depth=1 https://github.com/Pzqqt/android_kernel_xiaomi_marble -b melt-rebase .
+          cd ${{ env.KERNEL_ROOT }}
+          # 1. 克隆编译器到 gcc 目录
+          git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-gnu-6.4.1.git gcc
+          # 2. 克隆内核源码到当前目录
+          # 注意：先初始化 git，再拉取，这样就不会报错目录非空了
+          git init .
+          git remote add origin https://github.com/Pzqqt/android_kernel_xiaomi_marble
+          git fetch --depth=1 origin melt-rebase
+          git checkout FETCH_HEAD
       - name: 应用 Stock Config 伪装
         run: |
           STOCK_SRC="$GITHUB_WORKSPACE/config/stock_defconfig"
