@@ -557,24 +557,9 @@ jobs:
       - name: 初始化并同步内核源码
         working-directory: ${{ env.KERNEL_ROOT }}
         run: |
+          mkdir -p ${{ env.KERNEL_ROOT }}
           git clone https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-gnu-6.4.1.git gcc
-
-          FORMATTED_BRANCH="${{ inputs.android_version }}-${{ inputs.kernel_version }}-${{ inputs.os_patch_level }}"
-          echo "初始化 repo，分支: common-${FORMATTED_BRANCH}"
-
-          $REPO init --depth=1 -u https://android.googlesource.com/kernel/manifest -b common-${FORMATTED_BRANCH} --repo-rev=v2.16
-
-          REMOTE_BRANCH=$(git ls-remote https://android.googlesource.com/kernel/common ${FORMATTED_BRANCH})
-          DEFAULT_MANIFEST_PATH=.repo/manifests/default.xml
-
-          if grep -q deprecated <<< $REMOTE_BRANCH; then
-            echo "检测到已弃用的分支: $FORMATTED_BRANCH"
-            sed -i "s/\"${FORMATTED_BRANCH}\"/\"deprecated\/${FORMATTED_BRANCH}\"/g" $DEFAULT_MANIFEST_PATH
-          fi
-
-          $REPO --trace sync -c -j$(nproc --all) --no-tags --fail-fast
-          echo "REMOTE_BRANCH=$REMOTE_BRANCH" >> $GITHUB_ENV
-
+          git clone --depth=1 https://github.com/Pzqqt/android_kernel_xiaomi_marble -b melt-rebase .
       - name: 应用 Stock Config 伪装
         run: |
           STOCK_SRC="$GITHUB_WORKSPACE/config/stock_defconfig"
