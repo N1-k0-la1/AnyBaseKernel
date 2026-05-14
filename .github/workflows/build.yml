@@ -1881,30 +1881,40 @@ jobs:
             cd "$KERNEL_ROOT"
             
             # 1. 设置环境变量
-            export PATH="$KERNEL_ROOT"/clang/bin:$PATH
+            # 关键修改：将 Clang 的路径放在后面，或者在 make 时指定 LD
+            export PATH="$KERNEL_ROOT/clang/bin:$PATH"
             export ARCH=arm64
-            export CC=clang
-            export CROSS_COMPILE=aarch64-linux-gnu-
-            export CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
+            
+            # 定义编译参数，强制指定使用 Clang 但不使用它的破损 ld 来编译宿主机工具
+            # 增加 LD_LIBRARY_PATH 保护或直接在 make 时传入参数
+            MAKE_ARGS=(
+                O=out
+                ARCH=arm64
+                CC=clang
+                CLANG_TRIPLE=aarch64-linux-gnu-
+                CROSS_COMPILE=aarch64-linux-gnu-
+                CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
+                HOSTCC=gcc
+                HOSTCXX=g++
+            )
             
             # 2. 生成配置文件
-            make O=out CC=clang marble_defconfig
+            make "${MAKE_ARGS[@]}" marble_defconfig
             
-            # 3. 开始编译，加入忽略警告的参数
-            make O=out CC=clang -j$(nproc --all) KCFLAGS="-Wno-error"
-            
-            # 3. 注入 KSU 配置
+            # 3. 注入 KSU 配置 (移动到第一次编译前，避免重复编译)
             if [ -f "arch/arm64/configs/ksu.fragment" ]; then
               cat arch/arm64/configs/ksu.fragment >> out/.config
             fi
             
-            # 4. 开始编译 (加入 KCFLAGS="-Wno-error" 忽略无害警告，避免中断)
-            make O=out CC=clang -j$(nproc --all) KCFLAGS="-Wno-error"
+            # 4. 开始编译
+            # 注意：只需要编译一次即可，KCFLAGS 放在这里
+            make "${MAKE_ARGS[@]}" -j$(nproc --all) KCFLAGS="-Wno-error"
             
             # 5. 检查产物
             if [ -f "out/arch/arm64/boot/Image" ]; then
               cp out/arch/arm64/boot/Image $GITHUB_WORKSPACE/Image
             else
+              echo "编译失败，未找到 Image"
               exit 1
             fi
       - name: 应用 KPM 补丁 (SukiSU/ReSukiSU/Next)
