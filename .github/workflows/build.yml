@@ -1990,8 +1990,9 @@ jobs:
             set -ex
             cd "$KERNEL_ROOT"
             
-            # 1. 设置编译器路径（确认你的编译器目录名叫 gcc）
-            export PATH=$GITHUB_WORKSPACE/gcc/bin:$PATH
+            # 1. 设置编译器路径
+            # 使用相对路径或完整的变量路径，确保指向你下载的那个 gcc 文件夹
+            export PATH=$KERNEL_ROOT/gcc/bin:$PATH
             export ARCH=arm64
             export CROSS_COMPILE=aarch64-linux-gnu-
             
