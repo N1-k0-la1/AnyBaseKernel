@@ -1949,16 +1949,23 @@ jobs:
         run: |
           mkdir -p bootimgs
 
-          if [ "${{ inputs.android_version }}" == "android12" ] || [ "${{ inputs.android_version }}" == "android13" ]; then
-            SRC_DIR="$KERNEL_ROOT/out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist"
-          else
-            SRC_DIR="$KERNEL_ROOT/bazel-bin/kernel_aarch64"
-          fi
+          # 核心修改：统一指向你之前 make O=out 生成的路径
+          # 不管是 android12 还是 13，只要你编译时用了 O=out，产物就在这里
+          SRC_DIR="$KERNEL_ROOT/out/arch/arm64/boot"
 
+          echo "检查产物源目录: $SRC_DIR"
+          ls -l "$SRC_DIR/Image" || echo "未找到 Image"
+
+          # 执行拷贝
           cp "$SRC_DIR/Image" ./bootimgs/
-          cp "$SRC_DIR/Image.lz4" ./bootimgs/
+          # lz4 可能不存在，加个 || true 防止报错导致流程中断
+          cp "$SRC_DIR/Image.lz4" ./bootimgs/ || true
+          
+          # 拷贝到当前目录供后续打包使用
           cp "$SRC_DIR/Image" ./
-          cp "$SRC_DIR/Image.lz4" ./
+          [ -f "$SRC_DIR/Image.lz4" ] && cp "$SRC_DIR/Image.lz4" ./ || true
+
+          # 压缩
           gzip -n -k -f -9 ./Image > ./Image.gz
 
       - name: 创建 AnyKernel3 压缩包
