@@ -1882,6 +1882,7 @@ jobs:
             
             # 1. 设置环境变量
             # 关键修改：将 Clang 的路径放在后面，或者在 make 时指定 LD
+            rm -f "$KERNEL_ROOT/clang/bin/ld"
             export PATH="$KERNEL_ROOT/clang/bin:$PATH"
             export ARCH=arm64
             
