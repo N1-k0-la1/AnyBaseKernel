@@ -629,7 +629,7 @@ jobs:
 
       - name: 添加一加 8E 处理器支持
         if: inputs.supp_op
-        working-directory: "$KERNEL_ROOT"/drivers
+        working-directory: $KERNEL_ROOT/drivers
         run: |
           exit 0
           echo "下载一加 8E 支持补丁..."
@@ -834,7 +834,7 @@ jobs:
 
       - name: 配置 SukiSU 管理器信息
         if: inputs.ksu_variant == 'SukiSU'
-        working-directory: "$KERNEL_ROOT"/KernelSU
+        working-directory: $KERNEL_ROOT/KernelSU
         run: |
           KBUILD_FILE="./kernel/Kbuild"
           CUSTOM_TAG="${{ vars.MANAGER_STR }}"
