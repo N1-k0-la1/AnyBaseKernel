@@ -1599,9 +1599,9 @@ jobs:
 
       - name: 应用 Re-Kernel
         if: inputs.use_rekernel
-        working-directory: .
         run: |
           set -e
+          cd "$KERNEL_ROOT"
           echo "Integrating Re-Kernel..."
           TMP_REKERNEL=/tmp/rekernel
           rm -rf "$TMP_REKERNEL"
@@ -1648,15 +1648,15 @@ jobs:
             sed -i "s|^// #define ${VERSION_MACRO}$|#define ${VERSION_MACRO}|" "$REKERNEL_H"
           fi
 
-          # 修正头文件包含路径（适配 in-tree 编译）
+          # 修正头文件包含路径
           sed -i 's|#include <../android/binder_internal.h>|#include "../../drivers/android/binder_internal.h"|g' drivers/rekernel/rekernel.c
-          # 补齐 binder_internal 依赖（避免 5.10 下 DEFINE_SHOW_ATTRIBUTE 报错）
+          
+          # 补齐依赖
           grep -qF '#include <linux/seq_file.h>' drivers/rekernel/rekernel.c || sed -i '/#include <trace\/hooks\/signal.h>/a #include <linux/seq_file.h>' drivers/rekernel/rekernel.c
-
-          # 配置 defconfig（幂等）
+          
+          # 配置 defconfig
           grep -q '^CONFIG_REKERNEL=y$' "$DEFCONFIG" || echo "CONFIG_REKERNEL=y" >> "$DEFCONFIG"
           grep -q '^CONFIG_REKERNEL_NETWORK=y$' "$DEFCONFIG" || echo "CONFIG_REKERNEL_NETWORK=y" >> "$DEFCONFIG"
-
       - name: 执行自定义外部模块 (after_patch)
         if: inputs.use_custom_external_modules
         env:
