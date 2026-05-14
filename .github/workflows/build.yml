@@ -341,7 +341,7 @@ jobs:
           cat >> $GITHUB_ENV << EOF
           CONFIG=$CONFIG
           KERNEL_ROOT=$KERNEL_ROOT
-          DEFCONFIG=$KERNEL_ROOT/common/arch/arm64/configs/gki_defconfig
+          DEFCONFIG=$KERNEL_ROOT/arch/arm64/configs/gki_defconfig
           SUSFS4KSU=$GITHUB_WORKSPACE/susfs4ksu
           KERNEL_PATCHES=$GITHUB_WORKSPACE/kernel_patches
           SUKISU_PATCHES=$GITHUB_WORKSPACE/SukiSU_patch
@@ -569,7 +569,7 @@ jobs:
       - name: 应用 Stock Config 伪装
         run: |
           STOCK_SRC="$GITHUB_WORKSPACE/config/stock_defconfig"
-          STOCK_DST="$KERNEL_ROOT/common/arch/arm64/configs/stock_defconfig"
+          STOCK_DST="$KERNEL_ROOT/arch/arm64/configs/stock_defconfig"
 
           if [ ! -f "$STOCK_SRC" ]; then
             echo "未检测到 $STOCK_SRC，跳过 Stock Config 伪装。"
@@ -585,7 +585,7 @@ jobs:
 
           NEW_RULE='$(obj)/config_data: arch/arm64/configs/stock_defconfig FORCE'
           OLD_RULE='$(obj)/config_data: $(KCONFIG_CONFIG) FORCE'
-          TARGET_MAKEFILE="$KERNEL_ROOT/common/kernel/Makefile"
+          TARGET_MAKEFILE="$KERNEL_ROOT/kernel/Makefile"
 
           if [ ! -f "$TARGET_MAKEFILE" ]; then
             echo "::error::未找到 $TARGET_MAKEFILE"
@@ -605,15 +605,15 @@ jobs:
       - name: 提取实际子版本号
         run: |
           ACTUAL_SUBLEVEL="${{ inputs.sub_level }}"
-          if [[ -f "$KERNEL_ROOT/common/Makefile" ]]; then
-            EXTRACTED=$(grep '^SUBLEVEL = ' "$KERNEL_ROOT/common/Makefile" | awk '{print $3}')
+          if [[ -f "$KERNEL_ROOT/Makefile" ]]; then
+            EXTRACTED=$(grep '^SUBLEVEL = ' "$KERNEL_ROOT/Makefile" | awk '{print $3}')
             [[ -n "$EXTRACTED" ]] && ACTUAL_SUBLEVEL="$EXTRACTED"
           fi
           echo "ACTUAL_SUBLEVEL=$ACTUAL_SUBLEVEL" >> $GITHUB_ENV
           echo "实际子版本号: $ACTUAL_SUBLEVEL"
 
       - name: 修复 glibc 2.38 兼容性
-        working-directory: ${{ env.KERNEL_ROOT }}/common
+        working-directory: ${{ env.KERNEL_ROOT }}
         run: |
           RAW_SUB="${{ inputs.sub_level }}"
           [[ ! "$RAW_SUB" =~ ^[0-9]+$ ]] && CURRENT_SUB=99999 || CURRENT_SUB=$RAW_SUB
@@ -642,7 +642,7 @@ jobs:
 
       - name: 添加一加 8E 处理器支持
         if: inputs.supp_op
-        working-directory: ${{ env.KERNEL_ROOT }}/common/drivers
+        working-directory: ${{ env.KERNEL_ROOT }}/drivers
         run: |
           echo "下载一加 8E 支持补丁..."
           curl -LSs "https://github.com/xingguangcuican6666/ABK/raw/refs/heads/dev/hmbird_patch.c" -o hmbird_patch.c
@@ -913,9 +913,9 @@ jobs:
           fi
           echo "SUSFS 修复补丁版本: v${SUSFS_VERSION}"
 
-          cp $SUSFS4KSU/kernel_patches/50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch ./common/
-          cp $SUSFS4KSU/kernel_patches/fs/* ./common/fs/
-          cp $SUSFS4KSU/kernel_patches/include/linux/* ./common/include/linux/
+          cp $SUSFS4KSU/kernel_patches/50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch ./
+          cp $SUSFS4KSU/kernel_patches/fs/* ./fs/
+          cp $SUSFS4KSU/kernel_patches/include/linux/* ./include/linux/
 
           case "${{ inputs.ksu_variant }}" in
             "Official")
@@ -935,7 +935,7 @@ jobs:
               ;;
           esac
 
-          cd $KERNEL_ROOT/common
+          cd $KERNEL_ROOT
           patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
 
           if [ "${{ inputs.ksu_variant }}" == "SukiSU" ]; then
@@ -1082,7 +1082,7 @@ jobs:
             # Android 16 - 6.12 修复
             if [[ "${{ inputs.android_version }}" == "android16" && "${{ inputs.kernel_version }}" == "6.12" ]]; then
               # 修复 setuid_hook.c 重复定义
-              SETUID_HOOK="$KERNEL_ROOT/common/drivers/kernelsu/setuid_hook.c"
+              SETUID_HOOK="$KERNEL_ROOT/drivers/kernelsu/setuid_hook.c"
               if [ -f "$SETUID_HOOK" ]; then
                 sed -i 's/defined(CONFIG_KSU_MANUAL_HOOK))/!defined(CONFIG_KSU_SUSFS) \&\& defined(CONFIG_KSU_MANUAL_HOOK))/' "$SETUID_HOOK"
                 echo "已修复 setuid_hook.c 重复定义问题"
@@ -1111,7 +1111,7 @@ jobs:
 
       - name: 集成 Droidspaces 支持
         if: inputs.droidspaces != 'off'
-        working-directory: ${{ env.KERNEL_ROOT }}/common
+        working-directory: ${{ env.KERNEL_ROOT }}
         run: |
           set -euo pipefail
           KERNEL_VER="${{ inputs.kernel_version }}"
@@ -1298,7 +1298,7 @@ jobs:
 
       - name: 应用 Unicode 绕过修复
         if: inputs.enable_susfs
-        working-directory: ${{ env.KERNEL_ROOT }}/common
+        working-directory: ${{ env.KERNEL_ROOT }}
         run: |
           if [ "${{ inputs.kernel_version }}" = "5.10" ] || [ "${{ inputs.kernel_version }}" = "5.15" ]; then
             patch -p1 --forward < "$ACTION_BUILD/patches/unicode_bypass_fix_6.1-.patch" || true
@@ -1308,7 +1308,7 @@ jobs:
 
       - name: 配置 ZRAM LZ4 补丁栈
         if: inputs.use_zram
-        working-directory: ${{ env.KERNEL_ROOT }}/common
+        working-directory: ${{ env.KERNEL_ROOT }}
         run: |
           echo "升级 LZ4..."
           rm -f lib/lz4/lz4_compress.c lib/lz4/lz4_decompress.c lib/lz4/lz4defs.h lib/lz4/lz4hc_compress.c
@@ -1341,7 +1341,7 @@ jobs:
 
       - name: 修复 6.6 WiFi/蓝牙兼容性（三星 + 小米）
         if: inputs.kernel_version == '6.6'
-        working-directory: ${{ env.KERNEL_ROOT }}/common
+        working-directory: ${{ env.KERNEL_ROOT }}
         run: |
           ensure_line_once() {
             local file="$1"
@@ -1415,7 +1415,7 @@ jobs:
           fi
 
           if [ "${{ inputs.android_version }}" = "android14" ] || [ "${{ inputs.android_version }}" = "android15" ]; then
-            sed -i 's/"drivers\/block\/zram\/zram\.ko",//g; s/"mm\/zsmalloc\.ko",//g' "$KERNEL_ROOT/common/modules.bzl"
+            sed -i 's/"drivers\/block\/zram\/zram\.ko",//g; s/"mm\/zsmalloc\.ko",//g' "$KERNEL_ROOT/modules.bzl"
           fi
 
           if grep -q "CONFIG_ZSMALLOC=y" "$CONFIG_FILE" && grep -q "CONFIG_ZRAM=y" "$CONFIG_FILE"; then
@@ -1465,7 +1465,7 @@ jobs:
              [ "${{ inputs.sub_level }}" = "41" ] && \
              [ -f "$BBG_MAKEFILE" ]; then
             echo "应用 BBG legacy host header 生成兼容修复: android13-5.15.41"
-            python3 - "$BBG_MAKEFILE" "common/security/selinux" <<'PY'
+            python3 - "$BBG_MAKEFILE" "security/selinux" <<'PY'
           import sys
           import re
           from pathlib import Path
@@ -1597,8 +1597,8 @@ jobs:
           makefile.write_text(text, encoding="utf-8")
           PY
           fi
-          echo "CONFIG_BBG=y" >> common/arch/arm64/configs/gki_defconfig
-          sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/selinux/selinux,baseband_guard/ } }' common/security/Kconfig
+          echo "CONFIG_BBG=y" >> arch/arm64/configs/gki_defconfig
+          sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/selinux/selinux,baseband_guard/ } }' security/Kconfig
 
       - name: 添加 DDK 防格机 LSM
         if: inputs.use_ddk
@@ -1606,7 +1606,7 @@ jobs:
         run: |
           echo "应用 Xingguang DDK patch 栈并启用内建 LSM"
           bash "$ZZH_PATCHES/ddk/setup.sh"
-          test -f common/include/linux/xingguang_ddk.h
+          test -f include/linux/xingguang_ddk.h
           grep -q '^CONFIG_XINGGUANG_DDK=y$' "$DEFCONFIG" || echo "CONFIG_XINGGUANG_DDK=y" >> "$DEFCONFIG"
 
       - name: 应用 Re-Kernel
@@ -1620,12 +1620,12 @@ jobs:
           git clone --depth 1 https://github.com/Sakion-Team/Re-Kernel.git "$TMP_REKERNEL"
 
           # 准备驱动源码
-          mkdir -p common/drivers/rekernel
-          cp "$TMP_REKERNEL/LKM-Source/rekernel.c" common/drivers/rekernel/
-          cp "$TMP_REKERNEL/LKM-Source/rekernel.h" common/drivers/rekernel/
+          mkdir -p drivers/rekernel
+          cp "$TMP_REKERNEL/LKM-Source/rekernel.c" drivers/rekernel/
+          cp "$TMP_REKERNEL/LKM-Source/rekernel.h" drivers/rekernel/
 
           # 生成构建配置
-          cat > common/drivers/rekernel/Kconfig << 'EOF'
+          cat > drivers/rekernel/Kconfig << 'EOF'
           menu "Re:Kernel"
           config REKERNEL
               bool "Re:Kernel support (GKI Vendor Hooks)"
@@ -1640,30 +1640,30 @@ jobs:
           endmenu
           EOF
 
-          cat > common/drivers/rekernel/Makefile << 'EOF'
+          cat > drivers/rekernel/Makefile << 'EOF'
           obj-$(CONFIG_REKERNEL) += rekernel.o
           ccflags-$(CONFIG_REKERNEL_NETWORK) += -DNETWORK_FILTER
           EOF
 
           # 挂载到驱动树
-          if ! grep -qF 'source "drivers/rekernel/Kconfig"' common/drivers/Kconfig; then
-            sed -i '/^endmenu$/i source "drivers/rekernel/Kconfig"' common/drivers/Kconfig
+          if ! grep -qF 'source "drivers/rekernel/Kconfig"' drivers/Kconfig; then
+            sed -i '/^endmenu$/i source "drivers/rekernel/Kconfig"' drivers/Kconfig
           fi
-          if ! grep -qF 'obj-$(CONFIG_REKERNEL) += rekernel/' common/drivers/Makefile; then
-            echo 'obj-$(CONFIG_REKERNEL) += rekernel/' >> common/drivers/Makefile
+          if ! grep -qF 'obj-$(CONFIG_REKERNEL) += rekernel/' drivers/Makefile; then
+            echo 'obj-$(CONFIG_REKERNEL) += rekernel/' >> drivers/Makefile
           fi
 
           # 启用内核版本宏
-          REKERNEL_H="common/drivers/rekernel/rekernel.h"
+          REKERNEL_H="drivers/rekernel/rekernel.h"
           VERSION_MACRO="KERNEL_$(echo "${{ inputs.kernel_version }}" | tr '.' '_')"
           if grep -q "^// #define ${VERSION_MACRO}$" "$REKERNEL_H"; then
             sed -i "s|^// #define ${VERSION_MACRO}$|#define ${VERSION_MACRO}|" "$REKERNEL_H"
           fi
 
           # 修正头文件包含路径（适配 in-tree 编译）
-          sed -i 's|#include <../android/binder_internal.h>|#include "../../drivers/android/binder_internal.h"|g' common/drivers/rekernel/rekernel.c
+          sed -i 's|#include <../android/binder_internal.h>|#include "../../drivers/android/binder_internal.h"|g' drivers/rekernel/rekernel.c
           # 补齐 binder_internal 依赖（避免 5.10 下 DEFINE_SHOW_ATTRIBUTE 报错）
-          grep -qF '#include <linux/seq_file.h>' common/drivers/rekernel/rekernel.c || sed -i '/#include <trace\/hooks\/signal.h>/a #include <linux/seq_file.h>' common/drivers/rekernel/rekernel.c
+          grep -qF '#include <linux/seq_file.h>' drivers/rekernel/rekernel.c || sed -i '/#include <trace\/hooks\/signal.h>/a #include <linux/seq_file.h>' drivers/rekernel/rekernel.c
 
           # 配置 defconfig（幂等）
           grep -q '^CONFIG_REKERNEL=y$' "$DEFCONFIG" || echo "CONFIG_REKERNEL=y" >> "$DEFCONFIG"
@@ -1736,7 +1736,7 @@ jobs:
           EOF
           fi
 
-          sed -i 's/check_defconfig//' ./common/build.config.gki
+          sed -i 's/check_defconfig//' ./build.config.gki
 
       - name: 配置 KPM 超级密码
         if: inputs.use_kpm && inputs.kpm_password != '' && (inputs.ksu_variant == 'SukiSU' || inputs.ksu_variant == 'ReSukiSU' || inputs.ksu_variant == 'Next')
@@ -1764,22 +1764,22 @@ jobs:
         working-directory: ${{ env.KERNEL_ROOT }}
         run: |
           if [ -f "build/build.sh" ]; then
-            sed -i 's/-dirty//' ./common/scripts/setlocalversion
+            sed -i 's/-dirty//' ./scripts/setlocalversion
           else
-            sed -i '/^[[:space:]]*"protected_exports_list"[[:space:]]*:[[:space:]]*"android\/abi_gki_protected_exports_aarch64",$/d' ./common/BUILD.bazel
-            sed -i '/kmi_symbol_list_strict_mode/d' ./common/BUILD.bazel
-            rm -rf ./common/android/abi_gki_protected_exports_*
+            sed -i '/^[[:space:]]*"protected_exports_list"[[:space:]]*:[[:space:]]*"android\/abi_gki_protected_exports_aarch64",$/d' ./BUILD.bazel
+            sed -i '/kmi_symbol_list_strict_mode/d' ./BUILD.bazel
+            rm -rf ./android/abi_gki_protected_exports_*
             sed -i "/stable_scmversion_cmd/s/-maybe-dirty//g" ./build/kernel/kleaf/impl/stamp.bzl
           fi
 
           VERSION_INPUT=$(echo "${{ inputs.version }}" | tr -d '[:space:]')
           if [ -n "$VERSION_INPUT" ]; then
             CLEAN_VERSION=$(echo "$VERSION_INPUT" | sed -E 's/^[0-9]+\.[0-9]+\.[0-9]+//')
-            perl -i -0777 -pe 's/(.*)echo "\$\{KERNELVERSION\}\$\{file_localversion\}\$\{config_localversion\}\$\{LOCALVERSION\}\$\{scm_version\}"/$1echo "\$\{KERNELVERSION\}'"${CLEAN_VERSION}"'"/s' ./common/scripts/setlocalversion 2>/dev/null || true
-            sed -i "\$s|echo \"\$res\"|echo \"${CLEAN_VERSION}\"|" ./common/scripts/setlocalversion 2>/dev/null || true
-            sed -i '/^CONFIG_LOCALVERSION=/ s/="\([^"]*\)"/="'"$CLEAN_VERSION"'"/' ./common/arch/arm64/configs/gki_defconfig
+            perl -i -0777 -pe 's/(.*)echo "\$\{KERNELVERSION\}\$\{file_localversion\}\$\{config_localversion\}\$\{LOCALVERSION\}\$\{scm_version\}"/$1echo "\$\{KERNELVERSION\}'"${CLEAN_VERSION}"'"/s' ./scripts/setlocalversion 2>/dev/null || true
+            sed -i "\$s|echo \"\$res\"|echo \"${CLEAN_VERSION}\"|" ./scripts/setlocalversion 2>/dev/null || true
+            sed -i '/^CONFIG_LOCALVERSION=/ s/="\([^"]*\)"/="'"$CLEAN_VERSION"'"/' ./arch/arm64/configs/gki_defconfig
           elif [ ! -f "build/build.sh" ]; then
-            cd ./common
+            cd ./
             BID="ab$((RANDOM % 90000000 + 10000000))"
             GHASH=$(git rev-parse --verify HEAD | cut -c1-13)
             case "${{ inputs.android_version }}-${{ inputs.kernel_version }}" in
@@ -1814,7 +1814,7 @@ jobs:
           echo "KBUILD_BUILD_VERSION=1" >> "$GITHUB_ENV"
 
           # 统一处理 mkcompile_h 补丁
-          f="$KERNEL_ROOT/common/scripts/mkcompile_h"
+          f="$KERNEL_ROOT/scripts/mkcompile_h"
           if [ -f "$f" ]; then
             if [[ "${{ inputs.kernel_version }}" == "5.10" || "${{ inputs.kernel_version }}" == "5.15" ]]; then
               echo "应用 5.x 经典时间戳补丁: $f"
@@ -1887,7 +1887,7 @@ jobs:
               return opens - closes
 
           candidates = []
-          for base in (Path("common/drivers/kernelsu"), Path("drivers/kernelsu"), Path("KernelSU/kernel")):
+          for base in (Path("drivers/kernelsu"), Path("drivers/kernelsu"), Path("KernelSU/kernel")):
               if base.exists() and base not in candidates:
                   candidates.append(base)
 
@@ -1933,7 +1933,7 @@ jobs:
           PY
 
           KSU_BUILD_DIR=""
-          for dir in common/drivers/kernelsu drivers/kernelsu KernelSU/kernel; do
+          for dir in drivers/kernelsu drivers/kernelsu KernelSU/kernel; do
             if [ -d "$dir" ]; then
               KSU_BUILD_DIR="$dir"
               break
@@ -1989,16 +1989,16 @@ jobs:
             set -ex
             cd "$KERNEL_ROOT"
 
-            sed -i 's/BUILD_SYSTEM_DLKM=1/BUILD_SYSTEM_DLKM=0/' ./common/build.config.gki.aarch64
-            sed -i '/MODULES_ORDER=android\/gki_aarch64_modules/d' ./common/build.config.gki.aarch64
-            sed -i '/KMI_SYMBOL_LIST_STRICT_MODE/d' ./common/build.config.gki.aarch64
+            sed -i 's/BUILD_SYSTEM_DLKM=1/BUILD_SYSTEM_DLKM=0/' ./build.config.gki.aarch64
+            sed -i '/MODULES_ORDER=android\/gki_aarch64_modules/d' ./build.config.gki.aarch64
+            sed -i '/KMI_SYMBOL_LIST_STRICT_MODE/d' ./build.config.gki.aarch64
 
             if [ -f "build/build.sh" ]; then
-              LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh CC="/usr/bin/ccache clang" || exit 1
+              LTO=thin BUILD_CONFIG=build.config.gki.aarch64 build/build.sh CC="/usr/bin/ccache clang" || exit 1
               strings "out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image" | grep 'Linux version'
             else
               # 提取 gki_defconfig 修改到 fragment，避免 bazel trim 检查失败
-              FRAG="common/arch/arm64/configs/ksu.fragment"
+              FRAG="arch/arm64/configs/ksu.fragment"
               diff "$DEFCONFIG.orig" "$DEFCONFIG" | grep '^>' | sed 's/^> //; s/^[[:space:]]*//' > "$FRAG" || true
               cp "$DEFCONFIG.orig" "$DEFCONFIG"
               echo "=== KSU Fragment 内容 ==="
@@ -2006,14 +2006,14 @@ jobs:
               echo "========================="
               FRAG_FLAG=""
               if [ -s "$FRAG" ]; then
-                FRAG_FLAG="--defconfig_fragment=//common:arch/arm64/configs/ksu.fragment"
+                FRAG_FLAG="--defconfig_fragment=//:arch/arm64/configs/ksu.fragment"
               fi
               LTO_FLAG="--lto=thin"
               if [ "${{ inputs.kernel_version }}" = "6.12" ]; then
                 LTO_FLAG="--lto=none"
               fi
-              tools/bazel build --disk_cache=/home/runner/.cache/bazel --config=fast $LTO_FLAG $FRAG_FLAG //common:kernel_aarch64_dist || exit 1
-              strings ./bazel-bin/common/kernel_aarch64/Image | grep 'Linux version'
+              tools/bazel build --disk_cache=/home/runner/.cache/bazel --config=fast $LTO_FLAG $FRAG_FLAG //:kernel_aarch64_dist || exit 1
+              strings ./bazel-bin/kernel_aarch64/Image | grep 'Linux version'
             fi
 
             echo "当前 KSU 最新提交日期: ${KSU_LATEST_COMMIT_DATE}"
@@ -2032,7 +2032,7 @@ jobs:
               fi
               ;;
             "android14"|"android15"|"android16")
-              TARGET_PATH="$KERNEL_ROOT/bazel-bin/common/kernel_aarch64/"
+              TARGET_PATH="$KERNEL_ROOT/bazel-bin/kernel_aarch64/"
               ;;
           esac
 
@@ -2054,7 +2054,7 @@ jobs:
           if [ "${{ inputs.android_version }}" == "android12" ] || [ "${{ inputs.android_version }}" == "android13" ]; then
             SRC_DIR="$KERNEL_ROOT/out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist"
           else
-            SRC_DIR="$KERNEL_ROOT/bazel-bin/common/kernel_aarch64"
+            SRC_DIR="$KERNEL_ROOT/bazel-bin/kernel_aarch64"
           fi
 
           cp "$SRC_DIR/Image" ./bootimgs/
