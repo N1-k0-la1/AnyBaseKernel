@@ -1983,46 +1983,35 @@ jobs:
       - name: 编译内核
         uses: nick-fields/retry@v4
         with:
-          timeout_minutes: 30
-          max_attempts: 3
+          timeout_minutes: 60
+          max_attempts: 1
           retry_on: timeout
           command: |
-            echo "当前 KSU 最新提交日期: ${KSU_LATEST_COMMIT_DATE}"
-            echo "当前 SUSFS 最新提交日期: ${SUSFS_LATEST_COMMIT_DATE}"
             set -ex
             cd "$KERNEL_ROOT"
-
-            sed -i 's/BUILD_SYSTEM_DLKM=1/BUILD_SYSTEM_DLKM=0/' ./build.config.gki.aarch64
-            sed -i '/MODULES_ORDER=android\/gki_aarch64_modules/d' ./build.config.gki.aarch64
-            sed -i '/KMI_SYMBOL_LIST_STRICT_MODE/d' ./build.config.gki.aarch64
-
-            if [ -f "build/build.sh" ]; then
-              LTO=thin BUILD_CONFIG=build.config.gki.aarch64 build/build.sh CC="/usr/bin/ccache clang" || exit 1
-              strings "out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image" | grep 'Linux version'
-            else
-              # 提取 gki_defconfig 修改到 fragment，避免 bazel trim 检查失败
-              FRAG="arch/arm64/configs/ksu.fragment"
-              diff "$DEFCONFIG.orig" "$DEFCONFIG" | grep '^>' | sed 's/^> //; s/^[[:space:]]*//' > "$FRAG" || true
-              cp "$DEFCONFIG.orig" "$DEFCONFIG"
-              echo "=== KSU Fragment 内容 ==="
-              cat "$FRAG"
-              echo "========================="
-              FRAG_FLAG=""
-              if [ -s "$FRAG" ]; then
-                FRAG_FLAG="--defconfig_fragment=//:arch/arm64/configs/ksu.fragment"
-              fi
-              LTO_FLAG="--lto=thin"
-              if [ "${{ inputs.kernel_version }}" = "6.12" ]; then
-                LTO_FLAG="--lto=none"
-              fi
-              tools/bazel build --disk_cache=/home/runner/.cache/bazel --config=fast $LTO_FLAG $FRAG_FLAG //:kernel_aarch64_dist || exit 1
-              strings ./bazel-bin/kernel_aarch64/Image | grep 'Linux version'
+            
+            # 1. 设置编译器路径（确认你的编译器目录名叫 gcc）
+            export PATH=$GITHUB_WORKSPACE/gcc/bin:$PATH
+            export ARCH=arm64
+            export CROSS_COMPILE=aarch64-linux-gnu-
+            
+            # 2. 这里的 config 文件名要和 Melt 内核源码里的一致
+            make O=out marble_defconfig
+            
+            # 3. 注入 KSU 配置
+            if [ -f "arch/arm64/configs/ksu.fragment" ]; then
+              cat arch/arm64/configs/ksu.fragment >> out/.config
             fi
-
-            echo "当前 KSU 最新提交日期: ${KSU_LATEST_COMMIT_DATE}"
-            echo "当前 SUSFS 最新提交日期: ${SUSFS_LATEST_COMMIT_DATE}"
-            echo "如果日期不同或相差过远则补丁失效、编译失败"
-
+            
+            # 4. 开始编译
+            make O=out -j$(nproc --all)
+            
+            # 5. 检查产物
+            if [ -f "out/arch/arm64/boot/Image" ]; then
+              cp out/arch/arm64/boot/Image $GITHUB_WORKSPACE/Image
+            else
+              exit 1
+            fi
       - name: 应用 KPM 补丁 (SukiSU/ReSukiSU/Next)
         if: inputs.use_kpm && (inputs.ksu_variant == 'SukiSU' || inputs.ksu_variant == 'ReSukiSU' || inputs.ksu_variant == 'Next')
         env:
