@@ -604,6 +604,7 @@ jobs:
 
       - name: 提取实际子版本号
         run: |
+          exit 0
           ACTUAL_SUBLEVEL="${{ inputs.sub_level }}"
           if [[ -f "$KERNEL_ROOT/Makefile" ]]; then
             EXTRACTED=$(grep '^SUBLEVEL = ' "$KERNEL_ROOT/Makefile" | awk '{print $3}')
