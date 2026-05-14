@@ -600,7 +600,7 @@ jobs:
           echo "实际子版本号: $ACTUAL_SUBLEVEL"
 
       - name: 修复 glibc 2.38 兼容性
-        working-directory: "$KERNEL_ROOT"
+        working-directory: .
         run: |
           RAW_SUB="${{ inputs.sub_level }}"
           [[ ! "$RAW_SUB" =~ ^[0-9]+$ ]] && CURRENT_SUB=99999 || CURRENT_SUB=$RAW_SUB
@@ -629,7 +629,7 @@ jobs:
 
       - name: 添加一加 8E 处理器支持
         if: inputs.supp_op
-        working-directory: $KERNEL_ROOT/drivers
+        working-directory: ./drivers
         run: |
           exit 0
           echo "下载一加 8E 支持补丁..."
@@ -691,7 +691,7 @@ jobs:
           echo "KSU 分支: $BRANCH"
 
       - name: 添加 KernelSU
-        working-directory: "$KERNEL_ROOT"
+        working-directory: .
         run: |
           case "${{ inputs.ksu_variant }}" in
             "Official")
@@ -731,7 +731,7 @@ jobs:
 
       - name: 修复 SukiSU SUSFS 源码兼容
         if: inputs.ksu_variant == 'SukiSU' && inputs.enable_susfs
-        working-directory: "$KERNEL_ROOT"
+        working-directory: .
         run: |
           set -euo pipefail
 
@@ -834,7 +834,7 @@ jobs:
 
       - name: 配置 SukiSU 管理器信息
         if: inputs.ksu_variant == 'SukiSU'
-        working-directory: $KERNEL_ROOT/KernelSU
+        working-directory: ./KernelSU
         run: |
           KBUILD_FILE="./kernel/Kbuild"
           CUSTOM_TAG="${{ vars.MANAGER_STR }}"
@@ -887,7 +887,7 @@ jobs:
 
       - name: 应用 SUSFS 补丁
         if: inputs.enable_susfs
-        working-directory: "$KERNEL_ROOT"
+        working-directory: .
         run: |
           echo "应用 SUSFS 补丁..."
           # 读取 SUSFS 上游版本（例如 v2.1.0），用于匹配 wild 修复补丁目录
@@ -1099,7 +1099,7 @@ jobs:
 
       - name: 集成 Droidspaces 支持
         if: inputs.droidspaces != 'off'
-        working-directory: "$KERNEL_ROOT"
+        working-directory: .
         run: |
           set -euo pipefail
           KERNEL_VER="${{ inputs.kernel_version }}"
@@ -1286,7 +1286,7 @@ jobs:
 
       - name: 应用 Unicode 绕过修复
         if: inputs.enable_susfs
-        working-directory: "$KERNEL_ROOT"
+        working-directory: .
         run: |
           if [ "${{ inputs.kernel_version }}" = "5.10" ] || [ "${{ inputs.kernel_version }}" = "5.15" ]; then
             patch -p1 --forward < "$ACTION_BUILD/patches/unicode_bypass_fix_6.1-.patch" || true
@@ -1296,7 +1296,7 @@ jobs:
 
       - name: 配置 ZRAM LZ4 补丁栈
         if: inputs.use_zram
-        working-directory: "$KERNEL_ROOT"
+        working-directory: .
         run: |
           echo "升级 LZ4..."
           rm -f lib/lz4/lz4_compress.c lib/lz4/lz4_decompress.c lib/lz4/lz4defs.h lib/lz4/lz4hc_compress.c
@@ -1329,7 +1329,7 @@ jobs:
 
       - name: 修复 6.6 WiFi/蓝牙兼容性（三星 + 小米）
         if: inputs.kernel_version == '6.6'
-        working-directory: "$KERNEL_ROOT"
+        working-directory: .
         run: |
           ensure_line_once() {
             local file="$1"
@@ -1444,7 +1444,7 @@ jobs:
 
       - name: 添加 BBG 防格机补丁
         if: inputs.use_bbg
-        working-directory: "$KERNEL_ROOT"
+        working-directory: .
         run: |
           wget -O- https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh | bash
           BBG_MAKEFILE="Baseband-guard/Makefile"
@@ -1590,7 +1590,7 @@ jobs:
 
       - name: 添加 DDK 防格机 LSM
         if: inputs.use_ddk
-        working-directory: "$KERNEL_ROOT"
+        working-directory: .
         run: |
           echo "应用 Xingguang DDK patch 栈并启用内建 LSM"
           bash "$ZZH_PATCHES/ddk/setup.sh"
@@ -1599,7 +1599,7 @@ jobs:
 
       - name: 应用 Re-Kernel
         if: inputs.use_rekernel
-        working-directory: "$KERNEL_ROOT"
+        working-directory: .
         run: |
           set -e
           echo "Integrating Re-Kernel..."
@@ -1695,7 +1695,7 @@ jobs:
           fi
 
       - name: 配置内核选项
-        working-directory: "$KERNEL_ROOT"
+        working-directory: .
         run: |
           cat >> "$DEFCONFIG" << 'EOF'
           CONFIG_KSU=y
@@ -1749,7 +1749,7 @@ jobs:
           EOF
 
       - name: 配置内核名称
-        working-directory: "$KERNEL_ROOT"
+        working-directory: .
         run: |
           exit 0
           if [ -f "build/build.sh" ]; then
@@ -1857,7 +1857,7 @@ jobs:
 
       - name: 最终修复 SukiSU 源码兼容
         if: inputs.ksu_variant == 'SukiSU'
-        working-directory: "$KERNEL_ROOT"
+        working-directory: .
         run: |
           set -euo pipefail
 
