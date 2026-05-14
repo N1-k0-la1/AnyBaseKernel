@@ -689,15 +689,18 @@ jobs:
 
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
           echo "KSU 分支: $BRANCH"
-
       - name: 添加 KernelSU
-        working-directory: .
         run: |
+          set -e
+          # 1. 首先跳进你下载内核源码的那个目录
+          cd "$KERNEL_ROOT"
+          
           case "${{ inputs.ksu_variant }}" in
             "Official")
               echo "添加 KernelSU 官方版..."
               curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
 
+              # 这里的路径现在是相对于内核源码根目录的
               cd KernelSU
               KSU_GIT_VERSION=$(git rev-list --count HEAD)
               KSU_VERSION=$((20000 + KSU_GIT_VERSION))
@@ -714,11 +717,12 @@ jobs:
               ;;
             "SukiSU")
               echo "添加 SukiSU..."
-              curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash $BRANCH
+              # 确保 $BRANCH 变量有定义，如果没有定义，建议写死成 main 或者对应分支
+              curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s main
               ;;
             "ReSukiSU")
               echo "添加 ReSukiSU..."
-              curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash $BRANCH
+              curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash -s main
               ;;
           esac
 
@@ -728,7 +732,6 @@ jobs:
           else
             echo "KSU_LATEST_COMMIT_DATE=未知" >> $GITHUB_ENV
           fi
-
       - name: 修复 SukiSU SUSFS 源码兼容
         if: inputs.ksu_variant == 'SukiSU' && inputs.enable_susfs
         working-directory: .
